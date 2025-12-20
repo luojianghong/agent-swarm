@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 env:
@@ -23,6 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get version from package.json
+        id: version
+        run: echo "version=$(jq -r '.version' package.json)" >> $GITHUB_OUTPUT
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -36,10 +38,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
             type=sha
 
       - name: Build and push Docker image
@@ -61,6 +61,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get version from package.json
+        id: version
+        run: echo "version=$(jq -r '.version' package.json)" >> $GITHUB_OUTPUT
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -74,10 +78,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
             type=sha
 
       - name: Build and push Docker image

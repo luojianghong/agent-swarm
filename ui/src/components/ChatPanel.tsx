@@ -910,6 +910,9 @@ export default function ChatPanel({
   const [channelDrawerOpen, setChannelDrawerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const previousNewestMessageIdRef = useRef<string | null>(null);
+  const scrollPositionRef = useRef<{ scrollTop: number; scrollHeight: number } | null>(null);
 
   // Use controlled or internal state
   const selectedChannelId = controlledChannelId !== undefined ? controlledChannelId : internalChannelId;
@@ -1002,9 +1005,56 @@ export default function ChatPanel({
     }
   }, [channels, selectedChannelId, setSelectedChannelId]);
 
-  // Scroll to bottom when messages change
+  // Reset scroll tracking when channel changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    previousNewestMessageIdRef.current = null;
+    scrollPositionRef.current = null;
+  }, [selectedChannelId]);
+
+  // Get the newest message ID (last in the sorted array)
+  const newestMessageId = messages?.[messages.length - 1]?.id ?? null;
+
+  // Scroll to bottom only when a NEW message arrives AND user is near the bottom
+  useEffect(() => {
+    // If the newest message ID changed, a new message arrived
+    if (newestMessageId && newestMessageId !== previousNewestMessageIdRef.current) {
+      const isInitialLoad = previousNewestMessageIdRef.current === null;
+      previousNewestMessageIdRef.current = newestMessageId;
+
+      const container = messagesContainerRef.current;
+
+      if (isInitialLoad) {
+        // On initial load, scroll immediately without animation
+        messagesEndRef.current?.scrollIntoView();
+      } else if (container) {
+        // Check if user is near the bottom (within 150px)
+        const isNearBottom =
+          container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+
+        if (isNearBottom) {
+          // User is near bottom, scroll to show new message
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+        // If user is scrolled up, don't auto-scroll - let them read in peace
+      }
+    }
+  }, [newestMessageId]);
+
+  // Preserve scroll position when loading older messages
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !scrollPositionRef.current) return;
+
+    // Restore scroll position after older messages are prepended
+    const { scrollTop, scrollHeight: oldScrollHeight } = scrollPositionRef.current;
+    const newScrollHeight = container.scrollHeight;
+    const heightDiff = newScrollHeight - oldScrollHeight;
+
+    if (heightDiff > 0) {
+      container.scrollTop = scrollTop + heightDiff;
+    }
+
+    scrollPositionRef.current = null;
   }, [messages]);
 
   // Scroll to bottom of thread when thread opens or messages change
@@ -1395,6 +1445,7 @@ export default function ChatPanel({
 
         {/* Messages list */}
         <Box
+          ref={messagesContainerRef}
           sx={{
             flex: 1,
             overflow: "auto",
@@ -1422,7 +1473,17 @@ export default function ChatPanel({
                 <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
                   <Box
                     component="button"
-                    onClick={() => fetchNextPage()}
+                    onClick={() => {
+                      // Save scroll position before loading older messages
+                      const container = messagesContainerRef.current;
+                      if (container) {
+                        scrollPositionRef.current = {
+                          scrollTop: container.scrollTop,
+                          scrollHeight: container.scrollHeight,
+                        };
+                      }
+                      fetchNextPage();
+                    }}
                     disabled={isFetchingNextPage}
                     sx={{
                       fontFamily: "'Space Grotesk', sans-serif",

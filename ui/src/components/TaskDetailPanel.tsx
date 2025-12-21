@@ -109,13 +109,16 @@ export default function TaskDetailPanel({
     return (
       <Box
         sx={{
-          width: panelWidth,
+          position: { xs: "fixed", md: "relative" },
+          inset: { xs: 0, md: "auto" },
+          zIndex: { xs: 1300, md: "auto" },
+          width: { xs: "100%", md: panelWidth },
           height: "100%",
           bgcolor: "background.surface",
-          border: "1px solid",
+          border: { xs: "none", md: "1px solid" },
           borderColor: "neutral.outlinedBorder",
-          borderRadius: "12px",
-          p: 3,
+          borderRadius: { xs: 0, md: "12px" },
+          p: { xs: 2, md: 3 },
           overflow: "auto",
         }}
       >
@@ -131,7 +134,7 @@ export default function TaskDetailPanel({
 
   // Details section - task info
   const DetailsSection = ({ showProgress = true }: { showProgress?: boolean }) => (
-    <Box sx={{ p: 2, display: "flex", flexDirection: "column", ...(showProgress ? {} : { height: "100%" }) }}>
+    <Box sx={{ p: { xs: 1.5, md: 2 }, display: "flex", flexDirection: "column", ...(showProgress ? {} : { height: "100%" }) }}>
       {/* Info fields first */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flexShrink: 0, mb: 2 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -643,12 +646,15 @@ export default function TaskDetailPanel({
   return (
     <Box
       sx={{
-        width: panelWidth,
-        height: "100%",
+        position: { xs: "fixed", md: "relative" },
+        inset: { xs: 0, md: "auto" },
+        zIndex: { xs: 1300, md: "auto" },
+        width: { xs: "100%", md: expanded ? "100%" : 450 },
+        height: { xs: "100%", md: "100%" },
         bgcolor: "background.surface",
-        border: "1px solid",
+        border: { xs: "none", md: "1px solid" },
         borderColor: "neutral.outlinedBorder",
-        borderRadius: "12px",
+        borderRadius: { xs: 0, md: "12px" },
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -657,7 +663,7 @@ export default function TaskDetailPanel({
       {/* Header */}
       <Box
         sx={{
-          px: 2,
+          px: { xs: 1.5, md: 2 },
           py: 1.5,
           borderBottom: "1px solid",
           borderColor: "neutral.outlinedBorder",
@@ -665,11 +671,26 @@ export default function TaskDetailPanel({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderRadius: "12px 12px 0 0",
+          borderRadius: { xs: 0, md: "12px 12px 0 0" },
           flexShrink: 0,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {/* Mobile back button */}
+          <IconButton
+            size="sm"
+            variant="plain"
+            onClick={onClose}
+            sx={{
+              display: { xs: "flex", md: "none" },
+              color: colors.closeBtn,
+              minWidth: 44,
+              minHeight: 44,
+              "&:hover": { color: colors.closeBtnHover, bgcolor: colors.hoverBg },
+            }}
+          >
+            ←
+          </IconButton>
           <Box
             sx={{
               width: 8,
@@ -677,6 +698,7 @@ export default function TaskDetailPanel({
               clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
               bgcolor: colors.gold,
               boxShadow: colors.goldGlow,
+              display: { xs: "none", md: "block" },
             }}
           />
           <Typography
@@ -685,12 +707,14 @@ export default function TaskDetailPanel({
               fontWeight: 600,
               color: colors.gold,
               letterSpacing: "0.03em",
+              fontSize: { xs: "0.9rem", md: "1rem" },
             }}
           >
             TASK DETAILS
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        {/* Desktop buttons - hidden on mobile */}
+        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5 }}>
           {onToggleExpand && (
             <Tooltip title={expanded ? "Collapse panel" : "Expand to full width"} placement="bottom">
               <IconButton

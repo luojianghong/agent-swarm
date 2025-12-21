@@ -70,6 +70,128 @@ function getStatusColor(status: ServiceStatus, isDark: boolean): { bg: string; t
   }
 }
 
+// Mobile card component
+interface ServiceCardProps {
+  service: {
+    id: string;
+    name: string;
+    agentId: string;
+    port: number;
+    status: ServiceStatus;
+    description?: string;
+    url?: string;
+    interpreter?: string;
+    lastUpdatedAt: string;
+  };
+  agentName?: string;
+  isDark: boolean;
+}
+
+function ServiceCard({ service, agentName, isDark }: ServiceCardProps) {
+  const statusColors = getStatusColor(service.status, isDark);
+  const colors = {
+    amber: isDark ? "#F5A623" : "#D48806",
+    gold: isDark ? "#D4A574" : "#8B6914",
+  };
+
+  return (
+    <Box
+      sx={{
+        p: 2,
+        mb: 1,
+        borderRadius: "8px",
+        border: "1px solid",
+        borderColor: "neutral.outlinedBorder",
+        bgcolor: "background.surface",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            sx={{
+              fontFamily: "code",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "text.primary",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {service.name}
+          </Typography>
+          {service.url && (
+            <Link
+              href={service.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                fontFamily: "code",
+                fontSize: "0.65rem",
+                color: colors.amber,
+                display: "block",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {service.url}
+            </Link>
+          )}
+        </Box>
+        <Chip
+          size="sm"
+          variant="soft"
+          sx={{
+            fontFamily: "code",
+            fontSize: "0.6rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em",
+            bgcolor: statusColors.bg,
+            color: statusColors.text,
+            border: `1px solid ${statusColors.border}`,
+            flexShrink: 0,
+            ml: 1,
+          }}
+        >
+          {service.status}
+        </Chip>
+      </Box>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 1 }}>
+        <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: colors.amber }}>
+          Agent: {agentName || service.agentId.slice(0, 8)}
+        </Typography>
+        <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: "text.secondary" }}>
+          Port: {service.port}
+        </Typography>
+        {service.interpreter && (
+          <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: "text.tertiary" }}>
+            {service.interpreter}
+          </Typography>
+        )}
+      </Box>
+      {service.description && (
+        <Typography
+          sx={{
+            fontFamily: "code",
+            fontSize: "0.7rem",
+            color: "text.tertiary",
+            mt: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          {service.description}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 export default function ServicesPanel({
   statusFilter: controlledStatusFilter,
   onStatusFilterChange,
@@ -131,14 +253,14 @@ export default function ServicesPanel({
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
-          px: 2,
+          px: { xs: 1.5, md: 2 },
           py: 1.5,
           borderBottom: "1px solid",
           borderColor: "neutral.outlinedBorder",
           bgcolor: "background.level1",
-          flexWrap: "wrap",
           gap: 1.5,
         }}
       >
@@ -160,6 +282,7 @@ export default function ServicesPanel({
               fontWeight: 600,
               color: colors.gold,
               letterSpacing: "0.03em",
+              fontSize: { xs: "0.9rem", md: "1rem" },
             }}
           >
             SERVICES
@@ -176,7 +299,14 @@ export default function ServicesPanel({
         </Box>
 
         {/* Filters */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1,
+          }}
+        >
           {/* Search */}
           <Input
             placeholder="Search services..."
@@ -186,7 +316,7 @@ export default function ServicesPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 180,
+              minWidth: { xs: "100%", sm: 180 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.primary",
@@ -200,7 +330,7 @@ export default function ServicesPanel({
             }}
           />
 
-          {/* Agent Filter */}
+          {/* Agent Filter - hidden on mobile to save space */}
           <Select
             value={agentFilter}
             onChange={(_, value) => setAgentFilter(value as string)}
@@ -208,7 +338,8 @@ export default function ServicesPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 130,
+              minWidth: { xs: "100%", sm: 130 },
+              display: { xs: "none", sm: "flex" },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.secondary",
@@ -236,7 +367,7 @@ export default function ServicesPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 120,
+              minWidth: { xs: "100%", sm: 120 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.secondary",
@@ -272,168 +403,185 @@ export default function ServicesPanel({
             </Typography>
           </Box>
         ) : (
-          <Table
-            size="sm"
-            sx={{
-              "--TableCell-paddingY": "10px",
-              "--TableCell-paddingX": "12px",
-              "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
-              tableLayout: "fixed",
-              width: "100%",
-              "& thead th": {
-                bgcolor: "background.surface",
-                fontFamily: "code",
-                fontSize: "0.7rem",
-                letterSpacing: "0.05em",
-                color: "text.tertiary",
-                borderBottom: "1px solid",
-                borderColor: "neutral.outlinedBorder",
-                position: "sticky",
-                top: 0,
-                zIndex: 1,
-              },
-              "& tbody tr": {
-                transition: "background-color 0.2s ease",
-              },
-              "& tbody tr:hover": {
-                bgcolor: colors.hoverBg,
-              },
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={{ width: "20%" }}>NAME</th>
-                <th style={{ width: "15%" }}>AGENT</th>
-                <th style={{ width: "10%" }}>PORT</th>
-                <th style={{ width: "10%" }}>STATUS</th>
-                <th style={{ width: "25%" }}>DESCRIPTION</th>
-                <th style={{ width: "10%" }}>INTERPRETER</th>
-                <th style={{ width: "10%" }}>UPDATED</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.slice(0, 50).map((service) => {
-                const statusColors = getStatusColor(service.status, isDark);
-                return (
-                  <tr key={service.id}>
-                    <td>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-                        <Typography
-                          sx={{
-                            fontFamily: "code",
-                            fontSize: "0.8rem",
-                            color: "text.primary",
-                            fontWeight: 500,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {service.name}
-                        </Typography>
-                        {service.url && (
-                          <Link
-                            href={service.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+          <>
+            {/* Desktop Table */}
+            <Box sx={{ display: { xs: "none", md: "block" } }}>
+              <Table
+                size="sm"
+                sx={{
+                  "--TableCell-paddingY": "10px",
+                  "--TableCell-paddingX": "12px",
+                  "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
+                  tableLayout: "fixed",
+                  width: "100%",
+                  "& thead th": {
+                    bgcolor: "background.surface",
+                    fontFamily: "code",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.05em",
+                    color: "text.tertiary",
+                    borderBottom: "1px solid",
+                    borderColor: "neutral.outlinedBorder",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  },
+                  "& tbody tr": {
+                    transition: "background-color 0.2s ease",
+                  },
+                  "& tbody tr:hover": {
+                    bgcolor: colors.hoverBg,
+                  },
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ width: "20%" }}>NAME</th>
+                    <th style={{ width: "15%" }}>AGENT</th>
+                    <th style={{ width: "10%" }}>PORT</th>
+                    <th style={{ width: "10%" }}>STATUS</th>
+                    <th style={{ width: "25%" }}>DESCRIPTION</th>
+                    <th style={{ width: "10%" }}>INTERPRETER</th>
+                    <th style={{ width: "10%" }}>UPDATED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.slice(0, 50).map((service) => {
+                    const statusColors = getStatusColor(service.status, isDark);
+                    return (
+                      <tr key={service.id}>
+                        <td>
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                            <Typography
+                              sx={{
+                                fontFamily: "code",
+                                fontSize: "0.8rem",
+                                color: "text.primary",
+                                fontWeight: 500,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {service.name}
+                            </Typography>
+                            {service.url && (
+                              <Link
+                                href={service.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  fontFamily: "code",
+                                  fontSize: "0.65rem",
+                                  color: colors.amber,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {service.url}
+                              </Link>
+                            )}
+                          </Box>
+                        </td>
+                        <td>
+                          <Typography
                             sx={{
                               fontFamily: "code",
-                              fontSize: "0.65rem",
+                              fontSize: "0.75rem",
                               color: colors.amber,
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {service.url}
-                          </Link>
-                        )}
-                      </Box>
-                    </td>
-                    <td>
-                      <Typography
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.75rem",
-                          color: colors.amber,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {agentMap.get(service.agentId) || service.agentId.slice(0, 8)}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.75rem",
-                          color: "text.secondary",
-                        }}
-                      >
-                        :{service.port}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.65rem",
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.03em",
-                          bgcolor: statusColors.bg,
-                          color: statusColors.text,
-                          border: `1px solid ${statusColors.border}`,
-                        }}
-                      >
-                        {service.status}
-                      </Chip>
-                    </td>
-                    <td>
-                      <Typography
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.7rem",
-                          color: service.description ? "text.secondary" : "text.tertiary",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {service.description || "—"}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.7rem",
-                          color: "text.tertiary",
-                        }}
-                      >
-                        {service.interpreter || "auto"}
-                      </Typography>
-                    </td>
-                    <td>
-                      <Typography
-                        sx={{
-                          fontFamily: "code",
-                          fontSize: "0.7rem",
-                          color: "text.tertiary",
-                        }}
-                      >
-                        {formatSmartTime(service.lastUpdatedAt)}
-                      </Typography>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
+                            {agentMap.get(service.agentId) || service.agentId.slice(0, 8)}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Typography
+                            sx={{
+                              fontFamily: "code",
+                              fontSize: "0.75rem",
+                              color: "text.secondary",
+                            }}
+                          >
+                            :{service.port}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Chip
+                            size="sm"
+                            variant="soft"
+                            sx={{
+                              fontFamily: "code",
+                              fontSize: "0.65rem",
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.03em",
+                              bgcolor: statusColors.bg,
+                              color: statusColors.text,
+                              border: `1px solid ${statusColors.border}`,
+                            }}
+                          >
+                            {service.status}
+                          </Chip>
+                        </td>
+                        <td>
+                          <Typography
+                            sx={{
+                              fontFamily: "code",
+                              fontSize: "0.7rem",
+                              color: service.description ? "text.secondary" : "text.tertiary",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {service.description || "—"}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Typography
+                            sx={{
+                              fontFamily: "code",
+                              fontSize: "0.7rem",
+                              color: "text.tertiary",
+                            }}
+                          >
+                            {service.interpreter || "auto"}
+                          </Typography>
+                        </td>
+                        <td>
+                          <Typography
+                            sx={{
+                              fontFamily: "code",
+                              fontSize: "0.7rem",
+                              color: "text.tertiary",
+                            }}
+                          >
+                            {formatSmartTime(service.lastUpdatedAt)}
+                          </Typography>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </Box>
+
+            {/* Mobile Cards */}
+            <Box sx={{ display: { xs: "block", md: "none" }, p: 1.5 }}>
+              {services.slice(0, 50).map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  agentName={agentMap.get(service.agentId)}
+                  isDark={isDark}
+                />
+              ))}
+            </Box>
+          </>
         )}
       </Box>
 

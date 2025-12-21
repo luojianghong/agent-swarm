@@ -22,11 +22,12 @@ function HexStat({ label, value, color, glowColor, isActive, isDark, onClick }: 
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
       sx={{
         position: "relative",
-        width: 90,
-        height: 100,
+        width: { xs: 65, sm: 75, md: 90 },
+        height: { xs: 72, sm: 84, md: 100 },
         transition: "all 0.3s ease",
         cursor: onClick ? "pointer" : "default",
         animation: isActive ? "breathe 3s ease-in-out infinite" : undefined,
+        flexShrink: 0,
         "@keyframes breathe": {
           "0%, 100%": { opacity: 0.9, transform: "scale(1)" },
           "50%": { opacity: 1, transform: "scale(1.02)" },
@@ -79,7 +80,7 @@ function HexStat({ label, value, color, glowColor, isActive, isDark, onClick }: 
         <Typography
           sx={{
             fontFamily: "code",
-            fontSize: "1.5rem",
+            fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" },
             fontWeight: 700,
             color,
             textShadow: isDark ? `0 0 20px ${glowColor}` : "none",
@@ -91,13 +92,13 @@ function HexStat({ label, value, color, glowColor, isActive, isDark, onClick }: 
         <Typography
           sx={{
             fontFamily: "body",
-            fontSize: "0.55rem",
+            fontSize: { xs: "0.45rem", sm: "0.5rem", md: "0.55rem" },
             color: "text.tertiary",
             letterSpacing: "0.08em",
             mt: 0.5,
             textAlign: "center",
             lineHeight: 1.1,
-            px: 1,
+            px: 0.5,
           }}
         >
           {label}
@@ -193,50 +194,83 @@ export default function StatsBar({ onFilterAgents, onNavigateToTasks }: StatsBar
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
         bgcolor: "background.surface",
         border: "1px solid",
         borderColor: "neutral.outlinedBorder",
         borderRadius: "8px",
-        py: 1.5,
-        gap: 0,
+        py: { xs: 1, md: 1.5 },
         flexShrink: 0,
+        overflowX: { xs: "auto", md: "visible" },
+        WebkitOverflowScrolling: "touch",
       }}
     >
-      {/* Top row - 3 hexagons */}
+      {/* Desktop: Honeycomb layout */}
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 0.5,
+          display: { xs: "none", md: "flex" },
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0,
         }}
       >
-        {topRow.map((stat) => (
-          <HexStat
-            key={stat.label}
-            label={stat.label}
-            value={stat.value}
-            color={stat.color}
-            glowColor={stat.glowColor}
-            isActive={stat.isActive}
-            isDark={isDark}
-            onClick={stat.onClick}
-          />
-        ))}
+        {/* Top row - 3 hexagons */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 0.5,
+          }}
+        >
+          {topRow.map((stat) => (
+            <HexStat
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+              color={stat.color}
+              glowColor={stat.glowColor}
+              isActive={stat.isActive}
+              isDark={isDark}
+              onClick={stat.onClick}
+            />
+          ))}
+        </Box>
+
+        {/* Bottom row - 4 hexagons, offset for honeycomb effect */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 0.5,
+            mt: -2.5, // Overlap for honeycomb effect
+          }}
+        >
+          {bottomRow.map((stat) => (
+            <HexStat
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+              color={stat.color}
+              glowColor={stat.glowColor}
+              isActive={stat.isActive}
+              isDark={isDark}
+              onClick={stat.onClick}
+            />
+          ))}
+        </Box>
       </Box>
 
-      {/* Bottom row - 4 hexagons, offset for honeycomb effect */}
+      {/* Mobile: Single row horizontal scroll */}
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 0.5,
-          mt: -2.5, // Overlap for honeycomb effect
+          display: { xs: "flex", md: "none" },
+          flexDirection: "row",
+          alignItems: "center",
+          gap: { xs: 0.5, sm: 1 },
+          px: 1,
+          minWidth: "max-content",
         }}
       >
-        {bottomRow.map((stat) => (
+        {[...topRow, ...bottomRow].map((stat) => (
           <HexStat
             key={stat.label}
             label={stat.label}

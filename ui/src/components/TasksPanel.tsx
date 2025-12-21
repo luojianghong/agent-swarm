@@ -61,6 +61,92 @@ function formatSmartTime(dateStr: string): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// Mobile card component
+interface TaskCardProps {
+  task: AgentTask;
+  selected: boolean;
+  onClick: () => void;
+  agentName?: string;
+  isDark: boolean;
+}
+
+function TaskCard({ task, selected, onClick, agentName, isDark }: TaskCardProps) {
+  const colors = {
+    amber: isDark ? "#F5A623" : "#D48806",
+    gold: isDark ? "#D4A574" : "#8B6914",
+    selectedBorder: isDark ? "#D4A574" : "#8B6914",
+    goldSoftBg: isDark ? "rgba(212, 165, 116, 0.1)" : "rgba(139, 105, 20, 0.08)",
+    goldBorder: isDark ? "rgba(212, 165, 116, 0.3)" : "rgba(139, 105, 20, 0.25)",
+  };
+
+  return (
+    <Box
+      onClick={onClick}
+      sx={{
+        p: 2,
+        mb: 1,
+        borderRadius: "8px",
+        border: "1px solid",
+        borderColor: selected ? colors.selectedBorder : "neutral.outlinedBorder",
+        bgcolor: selected ? colors.goldSoftBg : "background.surface",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        "&:active": {
+          bgcolor: colors.goldSoftBg,
+        },
+      }}
+    >
+      <Typography
+        sx={{
+          fontFamily: "code",
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          color: "text.primary",
+          mb: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}
+      >
+        {task.task}
+      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+        <StatusBadge status={task.status} />
+        <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: "text.tertiary" }}>
+          {getElapsedTime(task)}
+        </Typography>
+      </Box>
+      {task.agentId && (
+        <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: colors.amber, mt: 0.5 }}>
+          Agent: {agentName || task.agentId.slice(0, 8)}
+        </Typography>
+      )}
+      {task.tags && task.tags.length > 0 && (
+        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 1 }}>
+          {task.tags.slice(0, 3).map((tag) => (
+            <Chip
+              key={tag}
+              size="sm"
+              variant="soft"
+              sx={{
+                fontFamily: "code",
+                fontSize: "0.55rem",
+                bgcolor: colors.goldSoftBg,
+                color: colors.gold,
+                border: `1px solid ${colors.goldBorder}`,
+              }}
+            >
+              {tag}
+            </Chip>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 export default function TasksPanel({
   selectedTaskId,
   onSelectTask,
@@ -125,14 +211,14 @@ export default function TasksPanel({
       <Box
         sx={{
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
-          px: 2,
+          px: { xs: 1.5, md: 2 },
           py: 1.5,
           borderBottom: "1px solid",
           borderColor: "neutral.outlinedBorder",
           bgcolor: "background.level1",
-          flexWrap: "wrap",
           gap: 1.5,
         }}
       >
@@ -154,6 +240,7 @@ export default function TasksPanel({
               fontWeight: 600,
               color: colors.gold,
               letterSpacing: "0.03em",
+              fontSize: { xs: "0.9rem", md: "1rem" },
             }}
           >
             TASKS
@@ -170,7 +257,14 @@ export default function TasksPanel({
         </Box>
 
         {/* Filters */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1,
+          }}
+        >
           {/* Search */}
           <Input
             placeholder="Search tasks..."
@@ -180,7 +274,7 @@ export default function TasksPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 180,
+              minWidth: { xs: "100%", sm: 180 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.primary",
@@ -194,7 +288,7 @@ export default function TasksPanel({
             }}
           />
 
-          {/* Agent Filter */}
+          {/* Agent Filter - hidden on mobile to save space */}
           <Select
             value={agentFilter}
             onChange={(_, value) => setAgentFilter(value as string)}
@@ -202,7 +296,8 @@ export default function TasksPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 130,
+              minWidth: { xs: "100%", sm: 130 },
+              display: { xs: "none", sm: "flex" },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.secondary",
@@ -230,7 +325,7 @@ export default function TasksPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 120,
+              minWidth: { xs: "100%", sm: 120 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.secondary",
@@ -268,169 +363,188 @@ export default function TasksPanel({
             </Typography>
           </Box>
         ) : (
-          <Table
-            size="sm"
-            sx={{
-              "--TableCell-paddingY": "10px",
-              "--TableCell-paddingX": "12px",
-              "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
-              tableLayout: "fixed",
-              width: "100%",
-              "& thead th": {
-                bgcolor: "background.surface",
-                fontFamily: "code",
-                fontSize: "0.7rem",
-                letterSpacing: "0.05em",
-                color: "text.tertiary",
-                borderBottom: "1px solid",
-                borderColor: "neutral.outlinedBorder",
-                position: "sticky",
-                top: 0,
-                zIndex: 1,
-              },
-              "& tbody tr": {
-                transition: "background-color 0.2s ease",
-                cursor: "pointer",
-              },
-              "& tbody tr:hover": {
-                bgcolor: colors.hoverBg,
-              },
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={{ width: "30%" }}>TASK</th>
-                <th style={{ width: "10%" }}>AGENT</th>
-                <th style={{ width: "8%" }}>TYPE</th>
-                <th style={{ width: "12%" }}>TAGS</th>
-                <th style={{ width: "10%" }}>STATUS</th>
-                <th style={{ width: "12%" }}>PROGRESS</th>
-                <th style={{ width: "8%" }}>ELAPSED</th>
-                <th style={{ width: "10%" }}>UPDATED</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.slice(0, 50).map((task) => (
-                <tr
-                  key={task.id}
-                  onClick={() => onSelectTask(selectedTaskId === task.id ? null : task.id)}
-                >
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.8rem",
-                        color: "text.primary",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
+          <>
+            {/* Desktop Table */}
+            <Box sx={{ display: { xs: "none", md: "block" } }}>
+              <Table
+                size="sm"
+                sx={{
+                  "--TableCell-paddingY": "10px",
+                  "--TableCell-paddingX": "12px",
+                  "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
+                  tableLayout: "fixed",
+                  width: "100%",
+                  "& thead th": {
+                    bgcolor: "background.surface",
+                    fontFamily: "code",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.05em",
+                    color: "text.tertiary",
+                    borderBottom: "1px solid",
+                    borderColor: "neutral.outlinedBorder",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  },
+                  "& tbody tr": {
+                    transition: "background-color 0.2s ease",
+                    cursor: "pointer",
+                  },
+                  "& tbody tr:hover": {
+                    bgcolor: colors.hoverBg,
+                  },
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ width: "30%" }}>TASK</th>
+                    <th style={{ width: "10%" }}>AGENT</th>
+                    <th style={{ width: "8%" }}>TYPE</th>
+                    <th style={{ width: "12%" }}>TAGS</th>
+                    <th style={{ width: "10%" }}>STATUS</th>
+                    <th style={{ width: "12%" }}>PROGRESS</th>
+                    <th style={{ width: "8%" }}>ELAPSED</th>
+                    <th style={{ width: "10%" }}>UPDATED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.slice(0, 50).map((task) => (
+                    <tr
+                      key={task.id}
+                      onClick={() => onSelectTask(selectedTaskId === task.id ? null : task.id)}
                     >
-                      {task.task}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.75rem",
-                        color: task.agentId ? colors.amber : "text.tertiary",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {task.agentId ? (agentMap.get(task.agentId) || task.agentId.slice(0, 8)) : "—"}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.7rem",
-                        color: task.taskType ? "text.secondary" : "text.tertiary",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {task.taskType || "—"}
-                    </Typography>
-                  </td>
-                  <td>
-                    {task.tags && task.tags.length > 0 ? (
-                      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "nowrap", overflow: "hidden" }}>
-                        {task.tags.slice(0, 2).map((tag) => (
-                          <Chip
-                            key={tag}
-                            size="sm"
-                            variant="soft"
-                            sx={{
-                              fontFamily: "code",
-                              fontSize: "0.6rem",
-                              bgcolor: isDark ? "rgba(212, 165, 116, 0.1)" : "rgba(139, 105, 20, 0.08)",
-                              color: colors.gold,
-                              border: `1px solid ${isDark ? "rgba(212, 165, 116, 0.3)" : "rgba(139, 105, 20, 0.25)"}`,
-                            }}
-                          >
-                            {tag}
-                          </Chip>
-                        ))}
-                        {task.tags.length > 2 && (
-                          <Typography sx={{ fontFamily: "code", fontSize: "0.6rem", color: "text.tertiary" }}>
-                            +{task.tags.length - 2}
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.8rem",
+                            color: "text.primary",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {task.task}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.75rem",
+                            color: task.agentId ? colors.amber : "text.tertiary",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {task.agentId ? (agentMap.get(task.agentId) || task.agentId.slice(0, 8)) : "—"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.7rem",
+                            color: task.taskType ? "text.secondary" : "text.tertiary",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {task.taskType || "—"}
+                        </Typography>
+                      </td>
+                      <td>
+                        {task.tags && task.tags.length > 0 ? (
+                          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "nowrap", overflow: "hidden" }}>
+                            {task.tags.slice(0, 2).map((tag) => (
+                              <Chip
+                                key={tag}
+                                size="sm"
+                                variant="soft"
+                                sx={{
+                                  fontFamily: "code",
+                                  fontSize: "0.6rem",
+                                  bgcolor: isDark ? "rgba(212, 165, 116, 0.1)" : "rgba(139, 105, 20, 0.08)",
+                                  color: colors.gold,
+                                  border: `1px solid ${isDark ? "rgba(212, 165, 116, 0.3)" : "rgba(139, 105, 20, 0.25)"}`,
+                                }}
+                              >
+                                {tag}
+                              </Chip>
+                            ))}
+                            {task.tags.length > 2 && (
+                              <Typography sx={{ fontFamily: "code", fontSize: "0.6rem", color: "text.tertiary" }}>
+                                +{task.tags.length - 2}
+                              </Typography>
+                            )}
+                          </Box>
+                        ) : (
+                          <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: "text.tertiary" }}>
+                            —
                           </Typography>
                         )}
-                      </Box>
-                    ) : (
-                      <Typography sx={{ fontFamily: "code", fontSize: "0.7rem", color: "text.tertiary" }}>
-                        —
-                      </Typography>
-                    )}
-                  </td>
-                  <td>
-                    <StatusBadge status={task.status} />
-                  </td>
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.7rem",
-                        color: "text.tertiary",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {task.progress || "—"}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.7rem",
-                        color: task.status === "in_progress" ? colors.amber : "text.tertiary",
-                      }}
-                    >
-                      {getElapsedTime(task)}
-                    </Typography>
-                  </td>
-                  <td>
-                    <Typography
-                      sx={{
-                        fontFamily: "code",
-                        fontSize: "0.7rem",
-                        color: "text.tertiary",
-                      }}
-                    >
-                      {formatSmartTime(task.lastUpdatedAt)}
-                    </Typography>
-                  </td>
-                </tr>
+                      </td>
+                      <td>
+                        <StatusBadge status={task.status} />
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.7rem",
+                            color: "text.tertiary",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {task.progress || "—"}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.7rem",
+                            color: task.status === "in_progress" ? colors.amber : "text.tertiary",
+                          }}
+                        >
+                          {getElapsedTime(task)}
+                        </Typography>
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            fontFamily: "code",
+                            fontSize: "0.7rem",
+                            color: "text.tertiary",
+                          }}
+                        >
+                          {formatSmartTime(task.lastUpdatedAt)}
+                        </Typography>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Box>
+
+            {/* Mobile Cards */}
+            <Box sx={{ display: { xs: "block", md: "none" }, p: 1.5 }}>
+              {tasks.slice(0, 50).map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  selected={selectedTaskId === task.id}
+                  onClick={() => onSelectTask(selectedTaskId === task.id ? null : task.id)}
+                  agentName={task.agentId ? agentMap.get(task.agentId) : undefined}
+                  isDark={isDark}
+                />
               ))}
-            </tbody>
-          </Table>
+            </Box>
+          </>
         )}
       </Box>
 

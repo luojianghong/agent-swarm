@@ -6,6 +6,7 @@ import IconButton from "@mui/joy/IconButton";
 import Card from "@mui/joy/Card";
 import Link from "@mui/joy/Link";
 import Tooltip from "@mui/joy/Tooltip";
+import Drawer from "@mui/joy/Drawer";
 import { useColorScheme } from "@mui/joy/styles";
 import { useChannels, useMessages, useThreadMessages, usePostMessage, useAgents } from "../hooks/queries";
 import type { ChannelMessage, Agent } from "../types/api";
@@ -611,6 +612,7 @@ export default function ChatPanel({
   const [internalThreadId, setInternalThreadId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [threadMessageInput, setThreadMessageInput] = useState("");
+  const [channelDrawerOpen, setChannelDrawerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
 
@@ -805,6 +807,60 @@ export default function ChatPanel({
     },
   };
 
+  // Channel list content - reused in drawer and desktop sidebar
+  const channelListContent = (
+    <Box sx={{ flex: 1, overflow: "auto", p: 1 }}>
+      {channelsLoading ? (
+        <Typography sx={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.8rem", color: "text.tertiary", p: 1.5 }}>
+          Loading...
+        </Typography>
+      ) : !channels || channels.length === 0 ? (
+        <Typography sx={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.8rem", color: "text.tertiary", p: 1.5 }}>
+          No channels
+        </Typography>
+      ) : (
+        channels.map((channel) => (
+          <Box
+            key={channel.id}
+            onClick={() => {
+              setSelectedChannelId(channel.id);
+              setSelectedThreadId(null);
+              setChannelDrawerOpen(false);
+            }}
+            sx={{
+              px: 1.5,
+              py: 1.5,
+              borderRadius: "6px",
+              cursor: "pointer",
+              bgcolor: selectedChannelId === channel.id ? colors.selectedBg : "transparent",
+              border: "1px solid",
+              borderColor: selectedChannelId === channel.id ? colors.amberBorder : "transparent",
+              transition: "all 0.15s ease",
+              mb: 0.5,
+              minHeight: 44,
+              display: "flex",
+              alignItems: "center",
+              "&:hover": {
+                bgcolor: selectedChannelId === channel.id ? colors.selectedBg : colors.hoverBg,
+              },
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.8rem",
+                fontWeight: selectedChannelId === channel.id ? 600 : 400,
+                color: selectedChannelId === channel.id ? colors.amber : "text.secondary",
+              }}
+            >
+              # {channel.name}
+            </Typography>
+          </Box>
+        ))
+      )}
+    </Box>
+  );
+
   return (
     <Card
       variant="outlined"
@@ -816,18 +872,91 @@ export default function ChatPanel({
         overflow: "hidden",
         bgcolor: "background.surface",
         borderColor: "neutral.outlinedBorder",
-        borderRadius: "12px",
+        borderRadius: { xs: 0, md: "12px" },
         gap: 0,
       }}
     >
-      {/* Channel List - Fixed width */}
+      {/* Mobile Channel Drawer */}
+      <Drawer
+        open={channelDrawerOpen}
+        onClose={() => setChannelDrawerOpen(false)}
+        sx={{
+          display: { xs: "block", md: "none" },
+          "& .MuiDrawer-content": {
+            width: 280,
+            bgcolor: isDark ? "#1A130E" : "#FDF8F3",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Drawer header */}
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderBottom: "1px solid",
+              borderColor: "neutral.outlinedBorder",
+              bgcolor: "background.level1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              minHeight: 56,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 10,
+                  clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                  bgcolor: colors.amber,
+                  boxShadow: colors.amberGlow,
+                }}
+              />
+              <Typography
+                sx={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 600,
+                  color: colors.amber,
+                  letterSpacing: "0.05em",
+                  fontSize: "0.85rem",
+                }}
+              >
+                CHANNELS
+              </Typography>
+            </Box>
+            <IconButton
+              size="sm"
+              variant="plain"
+              onClick={() => setChannelDrawerOpen(false)}
+              sx={{
+                color: "text.tertiary",
+                minWidth: 44,
+                minHeight: 44,
+                "&:hover": { color: "text.primary", bgcolor: colors.hoverBg },
+              }}
+            >
+              ✕
+            </IconButton>
+          </Box>
+          {channelListContent}
+        </Box>
+      </Drawer>
+
+      {/* Desktop Channel List - Fixed width, hidden on mobile */}
       <Box
         sx={{
           width: 220,
           flexShrink: 0,
           borderRight: "1px solid",
           borderColor: "neutral.outlinedBorder",
-          display: "flex",
+          display: { xs: "none", md: "flex" },
           flexDirection: "column",
           overflow: "hidden",
           bgcolor: isDark ? "rgba(13, 9, 6, 0.3)" : "rgba(245, 237, 228, 0.5)",
@@ -869,61 +998,17 @@ export default function ChatPanel({
             </Typography>
           </Box>
         </Box>
-
-        {/* Channel list */}
-        <Box sx={{ flex: 1, overflow: "auto", p: 1 }}>
-          {channelsLoading ? (
-            <Typography sx={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.8rem", color: "text.tertiary", p: 1.5 }}>
-              Loading...
-            </Typography>
-          ) : !channels || channels.length === 0 ? (
-            <Typography sx={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.8rem", color: "text.tertiary", p: 1.5 }}>
-              No channels
-            </Typography>
-          ) : (
-            channels.map((channel) => (
-              <Box
-                key={channel.id}
-                onClick={() => {
-                  setSelectedChannelId(channel.id);
-                  setSelectedThreadId(null);
-                }}
-                sx={{
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  bgcolor: selectedChannelId === channel.id ? colors.selectedBg : "transparent",
-                  border: "1px solid",
-                  borderColor: selectedChannelId === channel.id ? colors.amberBorder : "transparent",
-                  transition: "all 0.15s ease",
-                  mb: 0.5,
-                  "&:hover": {
-                    bgcolor: selectedChannelId === channel.id ? colors.selectedBg : colors.hoverBg,
-                  },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: "0.8rem",
-                    fontWeight: selectedChannelId === channel.id ? 600 : 400,
-                    color: selectedChannelId === channel.id ? colors.amber : "text.secondary",
-                  }}
-                >
-                  # {channel.name}
-                </Typography>
-              </Box>
-            ))
-          )}
-        </Box>
+        {channelListContent}
       </Box>
 
-      {/* Messages Panel - Flex, equal split with thread */}
+      {/* Messages Panel - Flex, equal split with thread, hidden when thread is open on mobile */}
       <Box
         sx={{
           flex: 1,
-          display: "flex",
+          display: {
+            xs: selectedThreadMessage ? "none" : "flex",
+            md: "flex",
+          },
           flexDirection: "column",
           overflow: "hidden",
           minWidth: 0,
@@ -932,40 +1017,65 @@ export default function ChatPanel({
         {/* Channel header with title and description */}
         <Box
           sx={{
-            px: 2.5,
+            px: { xs: 1.5, md: 2.5 },
             py: 1.5,
             borderBottom: "1px solid",
             borderColor: "neutral.outlinedBorder",
             bgcolor: "background.level1",
-            height: 64,
+            height: { xs: 56, md: 64 },
             display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
+            alignItems: "center",
+            gap: 1,
           }}
         >
-          <Typography
+          {/* Mobile hamburger menu */}
+          <IconButton
+            size="sm"
+            variant="plain"
+            onClick={() => setChannelDrawerOpen(true)}
             sx={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontWeight: 600,
-              fontSize: "1rem",
-              color: "text.primary",
-              mb: 0.25,
+              display: { xs: "flex", md: "none" },
+              color: colors.amber,
+              minWidth: 44,
+              minHeight: 44,
+              "&:hover": { bgcolor: colors.hoverBg },
             }}
           >
-            # {selectedChannel?.name || "Select a channel"}
-          </Typography>
-          {selectedChannel?.description && (
+            ☰
+          </IconButton>
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               sx={{
                 fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: "0.75rem",
-                color: "text.tertiary",
-                lineHeight: 1.4,
+                fontWeight: 600,
+                fontSize: { xs: "0.9rem", md: "1rem" },
+                color: "text.primary",
+                mb: 0.25,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {selectedChannel.description}
+              # {selectedChannel?.name || "Select a channel"}
             </Typography>
-          )}
+            {selectedChannel?.description && (
+              <Typography
+                sx={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "0.7rem",
+                  color: "text.tertiary",
+                  lineHeight: 1.4,
+                  display: { xs: "none", sm: "block" },
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {selectedChannel.description}
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {/* Messages list */}
@@ -1013,7 +1123,7 @@ export default function ChatPanel({
         {/* Message input */}
         <Box
           sx={{
-            p: 2,
+            p: { xs: 1.5, md: 2 },
             borderTop: "1px solid",
             borderColor: "neutral.outlinedBorder",
             bgcolor: "background.level1",
@@ -1036,24 +1146,28 @@ export default function ChatPanel({
         </Box>
       </Box>
 
-      {/* Thread Panel - Equal width to messages */}
+      {/* Thread Panel - Full screen on mobile, equal width on desktop */}
       {selectedThreadMessage && (
         <Box
           sx={{
-            flex: 1,
+            position: { xs: "fixed", md: "relative" },
+            inset: { xs: 0, md: "auto" },
+            zIndex: { xs: 1300, md: "auto" },
+            flex: { xs: "none", md: 1 },
+            width: { xs: "100%", md: "auto" },
             minWidth: 0,
-            borderLeft: "1px solid",
+            borderLeft: { xs: "none", md: "1px solid" },
             borderColor: "neutral.outlinedBorder",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            bgcolor: isDark ? "rgba(37, 28, 21, 0.3)" : "rgba(245, 237, 228, 0.3)",
+            bgcolor: isDark ? "#1A130E" : "#FDF8F3",
           }}
         >
           {/* Thread header */}
           <Box
             sx={{
-              px: 2.5,
+              px: { xs: 1.5, md: 2.5 },
               py: 1.5,
               borderBottom: "1px solid",
               borderColor: "neutral.outlinedBorder",
@@ -1061,10 +1175,25 @@ export default function ChatPanel({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              height: 64,
+              height: { xs: 56, md: 64 },
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {/* Mobile back button */}
+              <IconButton
+                size="sm"
+                variant="plain"
+                onClick={handleCloseThread}
+                sx={{
+                  display: { xs: "flex", md: "none" },
+                  color: colors.gold,
+                  minWidth: 44,
+                  minHeight: 44,
+                  "&:hover": { bgcolor: colors.hoverBg },
+                }}
+              >
+                ←
+              </IconButton>
               <Box
                 sx={{
                   width: 8,
@@ -1072,6 +1201,7 @@ export default function ChatPanel({
                   clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
                   bgcolor: colors.gold,
                   boxShadow: isDark ? "0 0 6px rgba(212, 165, 116, 0.4)" : "0 0 4px rgba(139, 105, 20, 0.3)",
+                  display: { xs: "none", md: "block" },
                 }}
               />
               <Typography
@@ -1086,12 +1216,14 @@ export default function ChatPanel({
                 THREAD
               </Typography>
             </Box>
+            {/* Desktop close button */}
             <Tooltip title="Close thread" placement="bottom">
               <IconButton
                 size="sm"
                 variant="plain"
                 onClick={handleCloseThread}
                 sx={{
+                  display: { xs: "none", md: "flex" },
                   color: "text.tertiary",
                   fontSize: "1.1rem",
                   "&:hover": {
@@ -1174,7 +1306,7 @@ export default function ChatPanel({
           {/* Thread message input */}
           <Box
             sx={{
-              p: 2,
+              p: { xs: 1.5, md: 2 },
               borderTop: "1px solid",
               borderColor: "neutral.outlinedBorder",
               bgcolor: "background.level1",

@@ -51,8 +51,8 @@ export default function Header({ onSettingsClick }: HeaderProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        px: 3,
-        py: 2,
+        px: { xs: 1.5, sm: 2, md: 3 },
+        py: { xs: 1.5, md: 2 },
         borderBottom: "1px solid",
         borderColor: "neutral.outlinedBorder",
         bgcolor: "background.surface",
@@ -64,10 +64,7 @@ export default function Header({ onSettingsClick }: HeaderProps) {
         sx={{
           fontFamily: "display",
           fontWeight: 700,
-          fontSize: "1.5rem",
-          // background: isDark
-          //   ? "linear-gradient(135deg, #F5A623 0%, #FFB84D 50%, #C67C00 100%)"
-          //   : "linear-gradient(135deg, #9A5F00 0%, #B87300 50%, #6E4400 100%)",
+          fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" },
           background: isDark
             ? "#F5A623"
             : "#9A5F00",
@@ -75,14 +72,19 @@ export default function Header({ onSettingsClick }: HeaderProps) {
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           textShadow: isDark ? "0 0 30px rgba(245, 166, 35, 0.3)" : "none",
-          letterSpacing: "0.15em",
+          letterSpacing: { xs: "0.1em", md: "0.15em" },
         }}
       >
-        AGENT SWARM
+        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+          AGENT SWARM
+        </Box>
+        <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+          SWARM
+        </Box>
       </Typography>
 
       {/* Right side: version + theme toggle + settings */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.75, md: 1.5 } }}>
         {/* Connection Status / Version */}
         <Box
           component="span"
@@ -122,6 +124,8 @@ export default function Header({ onSettingsClick }: HeaderProps) {
           variant="outlined"
           onClick={toggleMode}
           sx={{
+            minWidth: { xs: 44, md: "auto" },
+            minHeight: { xs: 44, md: "auto" },
             borderColor: "neutral.outlinedBorder",
             color: "text.secondary",
             transition: "all 0.2s ease",
@@ -142,6 +146,8 @@ export default function Header({ onSettingsClick }: HeaderProps) {
           variant="outlined"
           onClick={onSettingsClick}
           sx={{
+            minWidth: { xs: 44, md: "auto" },
+            minHeight: { xs: 44, md: "auto" },
             borderColor: "neutral.outlinedBorder",
             color: "text.secondary",
             transition: "all 0.2s ease",

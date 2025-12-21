@@ -153,6 +153,107 @@ function AgentRow({ agent, selected, onClick, isDark }: AgentsRowProps) {
   );
 }
 
+// Mobile card component
+interface AgentCardProps {
+  agent: AgentWithTasks;
+  selected: boolean;
+  onClick: () => void;
+  isDark: boolean;
+}
+
+function AgentCard({ agent, selected, onClick, isDark }: AgentCardProps) {
+  const activeTasks = agent.tasks.filter(
+    (t) => t.status === "pending" || t.status === "in_progress"
+  ).length;
+
+  const isActive = agent.status === "busy";
+
+  const colors = {
+    amber: isDark ? "#F5A623" : "#D48806",
+    gold: isDark ? "#D4A574" : "#8B6914",
+    dormant: isDark ? "#6B5344" : "#A89A7C",
+    selectedBorder: isDark ? "#F5A623" : "#D48806",
+    amberGlow: isDark ? "0 0 10px rgba(245, 166, 35, 0.6)" : "0 0 8px rgba(212, 136, 6, 0.4)",
+    amberSoftBg: isDark ? "rgba(245, 166, 35, 0.1)" : "rgba(212, 136, 6, 0.1)",
+    amberBorder: isDark ? "rgba(245, 166, 35, 0.3)" : "rgba(212, 136, 6, 0.3)",
+    amberTextShadow: isDark ? "0 0 10px rgba(245, 166, 35, 0.5)" : "none",
+  };
+
+  return (
+    <Box
+      onClick={onClick}
+      sx={{
+        p: 2,
+        mb: 1,
+        borderRadius: "8px",
+        border: "1px solid",
+        borderColor: selected ? colors.selectedBorder : "neutral.outlinedBorder",
+        bgcolor: selected ? colors.amberSoftBg : "background.surface",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        "&:active": {
+          bgcolor: colors.amberSoftBg,
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              bgcolor: isActive ? colors.amber : agent.status === "idle" ? colors.gold : colors.dormant,
+              boxShadow: isActive ? colors.amberGlow : "none",
+              flexShrink: 0,
+            }}
+          />
+          <Typography
+            sx={{
+              fontFamily: "code",
+              fontWeight: 600,
+              color: agent.isLead ? colors.amber : "text.primary",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {agent.name}
+          </Typography>
+          {agent.isLead && (
+            <Typography
+              sx={{
+                fontFamily: "code",
+                fontSize: "0.55rem",
+                color: colors.amber,
+                textShadow: colors.amberTextShadow,
+                bgcolor: colors.amberSoftBg,
+                px: 0.5,
+                py: 0.2,
+                borderRadius: 0.5,
+                border: `1px solid ${colors.amberBorder}`,
+                flexShrink: 0,
+              }}
+            >
+              LEAD
+            </Typography>
+          )}
+        </Box>
+        <StatusBadge status={agent.status} />
+      </Box>
+      <Typography
+        sx={{
+          fontFamily: "code",
+          fontSize: "0.75rem",
+          color: "text.tertiary",
+        }}
+      >
+        {agent.role || "No role"} · {activeTasks}/{agent.tasks.length} tasks
+      </Typography>
+    </Box>
+  );
+}
+
 interface AgentsPanelProps {
   selectedAgentId: string | null;
   onSelectAgent: (agentId: string | null) => void;
@@ -261,15 +362,15 @@ export default function AgentsPanel({
       {/* Header */}
       <Box
         sx={{
-          px: 2,
+          px: { xs: 1.5, md: 2 },
           py: 1.5,
           borderBottom: "1px solid",
           borderColor: "neutral.outlinedBorder",
           bgcolor: "background.level1",
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
-          flexWrap: "wrap",
           gap: 1.5,
         }}
       >
@@ -291,6 +392,7 @@ export default function AgentsPanel({
               fontWeight: 600,
               color: colors.amber,
               letterSpacing: "0.03em",
+              fontSize: { xs: "0.9rem", md: "1rem" },
             }}
           >
             AGENTS
@@ -307,7 +409,14 @@ export default function AgentsPanel({
         </Box>
 
         {/* Filters */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1,
+          }}
+        >
           {/* Search */}
           <Input
             placeholder="Search..."
@@ -317,7 +426,7 @@ export default function AgentsPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 140,
+              minWidth: { xs: "100%", sm: 140 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.primary",
@@ -339,7 +448,7 @@ export default function AgentsPanel({
             sx={{
               fontFamily: "code",
               fontSize: "0.75rem",
-              minWidth: 100,
+              minWidth: { xs: "100%", sm: 100 },
               bgcolor: "background.surface",
               borderColor: "neutral.outlinedBorder",
               color: "text.secondary",
@@ -359,7 +468,7 @@ export default function AgentsPanel({
         </Box>
       </Box>
 
-      {/* Table */}
+      {/* Content */}
       <Box sx={{ flex: 1, overflow: "auto" }}>
         {filteredAgents.length === 0 ? (
           <Box sx={{ p: 3, textAlign: "center" }}>
@@ -368,44 +477,62 @@ export default function AgentsPanel({
             </Typography>
           </Box>
         ) : (
-          <Table
-            size="sm"
-            sx={{
-              "--TableCell-paddingY": "10px",
-              "--TableCell-paddingX": "12px",
-              "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
-              "& thead th": {
-                bgcolor: "background.surface",
-                fontFamily: "code",
-                fontSize: "0.7rem",
-                letterSpacing: "0.05em",
-                color: "text.tertiary",
-                borderBottom: "1px solid",
-                borderColor: "neutral.outlinedBorder",
-                position: "sticky",
-                top: 0,
-                zIndex: 1,
-              },
-              "& tbody tr": {
-                transition: "background-color 0.2s ease",
-              },
-              "& tbody tr:hover": {
-                bgcolor: colors.hoverBg,
-              },
-            }}
-          >
-            <thead>
-              <tr>
-                <th>NAME</th>
-                <th style={{ width: "130px" }}>ROLE</th>
-                <th style={{ width: "90px" }}>STATUS</th>
-                <th style={{ width: "70px" }}>TASKS</th>
-                <th style={{ width: "100px" }}>UPDATED</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop Table */}
+            <Box sx={{ display: { xs: "none", md: "block" } }}>
+              <Table
+                size="sm"
+                sx={{
+                  "--TableCell-paddingY": "10px",
+                  "--TableCell-paddingX": "12px",
+                  "--TableCell-borderColor": "var(--joy-palette-neutral-outlinedBorder)",
+                  "& thead th": {
+                    bgcolor: "background.surface",
+                    fontFamily: "code",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.05em",
+                    color: "text.tertiary",
+                    borderBottom: "1px solid",
+                    borderColor: "neutral.outlinedBorder",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                  },
+                  "& tbody tr": {
+                    transition: "background-color 0.2s ease",
+                  },
+                  "& tbody tr:hover": {
+                    bgcolor: colors.hoverBg,
+                  },
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th>NAME</th>
+                    <th style={{ width: "130px" }}>ROLE</th>
+                    <th style={{ width: "90px" }}>STATUS</th>
+                    <th style={{ width: "70px" }}>TASKS</th>
+                    <th style={{ width: "100px" }}>UPDATED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAgents.map((agent) => (
+                    <AgentRow
+                      key={agent.id}
+                      agent={agent}
+                      selected={selectedAgentId === agent.id}
+                      onClick={() => onSelectAgent(selectedAgentId === agent.id ? null : agent.id)}
+                      isDark={isDark}
+                    />
+                  ))}
+                </tbody>
+              </Table>
+            </Box>
+
+            {/* Mobile Cards */}
+            <Box sx={{ display: { xs: "block", md: "none" }, p: 1.5 }}>
               {filteredAgents.map((agent) => (
-                <AgentRow
+                <AgentCard
                   key={agent.id}
                   agent={agent}
                   selected={selectedAgentId === agent.id}
@@ -413,8 +540,8 @@ export default function AgentsPanel({
                   isDark={isDark}
                 />
               ))}
-            </tbody>
-          </Table>
+            </Box>
+          </>
         )}
       </Box>
     </Card>

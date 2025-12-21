@@ -307,7 +307,7 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
       <Header onSettingsClick={onSettingsClick} />
 
       {/* Tabs */}
-      <Box sx={{ px: 3, pt: 2, pb: 3, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, pt: { xs: 1.5, md: 2 }, pb: { xs: 2, md: 3 }, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
@@ -326,9 +326,11 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
               bgcolor: "transparent",
               borderBottom: "1px solid",
               borderColor: "neutral.outlinedBorder",
+              overflowX: { xs: "auto", md: "visible" },
+              flexWrap: { xs: "nowrap", md: "wrap" },
               "& .MuiTab-root": {
                 fontFamily: "code",
-                fontSize: "0.8rem",
+                fontSize: { xs: "0.7rem", md: "0.8rem" },
                 letterSpacing: "0.03em",
                 fontWeight: 600,
                 color: "text.tertiary",
@@ -336,7 +338,7 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
                 border: "1px solid transparent",
                 borderBottom: "none",
                 borderRadius: "6px 6px 0 0",
-                px: 3,
+                px: { xs: 2, md: 3 },
                 py: 1,
                 transition: "all 0.2s ease",
                 "&:hover": {
@@ -376,12 +378,24 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
               sx={{
                 height: "100%",
                 display: "flex",
-                gap: 3,
+                flexDirection: { xs: "column", lg: "row" },
+                gap: { xs: 2, md: 3 },
               }}
             >
-              {/* Main Content - hidden when expanded */}
+              {/* Main Content - hidden when expanded or when detail selected on mobile */}
               {!(selectedAgentId && expandDetail) && (
-                <Box sx={{ flex: 1, display: "flex", gap: 3, minWidth: 0 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: {
+                      xs: selectedAgentId ? "none" : "flex",
+                      md: "flex",
+                    },
+                    flexDirection: { xs: "column", lg: "row" },
+                    gap: { xs: 2, md: 3 },
+                    minWidth: 0,
+                  }}
+                >
                   {/* Agents Panel */}
                   <Box sx={{ flex: 2, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
                     <StatsBar
@@ -396,8 +410,8 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
                     />
                   </Box>
 
-                  {/* Activity Feed */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {/* Activity Feed - hidden on mobile */}
+                  <Box sx={{ flex: 1, minWidth: 0, display: { xs: "none", lg: "block" } }}>
                     <ActivityFeed
                       onNavigateToAgent={handleNavigateToAgent}
                       onNavigateToTask={handleNavigateToTask}
@@ -437,12 +451,22 @@ export default function Dashboard({ onSettingsClick }: DashboardProps) {
               sx={{
                 height: "100%",
                 display: "flex",
-                gap: 3,
+                flexDirection: { xs: "column", lg: "row" },
+                gap: { xs: 2, md: 3 },
               }}
             >
-              {/* Tasks Panel - hidden when expanded */}
+              {/* Tasks Panel - hidden when expanded or when detail selected on mobile */}
               {!(selectedTaskId && expandDetail) && (
-                <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: {
+                      xs: selectedTaskId ? "none" : "block",
+                      md: "block",
+                    },
+                  }}
+                >
                   <TasksPanel
                     selectedTaskId={selectedTaskId}
                     onSelectTask={handleSelectTask}

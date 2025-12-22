@@ -1,0 +1,137 @@
+# Docker Compose for Agent Swarm
+#
+# Usage:
+#   docker-compose -f docker-compose.example.yml --env-file .env up -d
+#
+# What it does:
+#  - Sets up an API service and multiple worker/lead agents
+#  - Deploys 2 worker agents and 1 lead agent by default
+#  - Uses volumes for persistent storage of logs, db and agent workspaces
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+      - ENV=${ENV:-development}
+      - API_KEY=${API_KEY}
+
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://localhost:3013}
+      - APP_URL=${APP_URL:-http://localhost:5175}
+
+      # Optional: Enable Slack integration
+      - SLACK_DISABLE=${SLACK_DISABLE:-false}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+
+    ports:
+      - "3013:3013"
+
+    volumes:
+      # For the sqlite database
+      - swarm_api:/app
+
+    restart: unless-stopped
+
+  worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+
+    environment:
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - API_KEY=${API_KEY}
+      - AGENT_ID=${AGENT_ID}
+      - AGENT_ROLE=worker
+
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://api:3013}
+
+      # Optional environment variables
+      - SESSION_ID=${SESSION_ID:-}
+      - YOLO=${YOLO:-false}
+      # GitHub credentials for git push and PR operations
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_EMAIL=${GITHUB_EMAIL:-}
+      - GITHUB_NAME=${GITHUB_NAME:-}
+      # Service registry URL (for service discovery)
+      - SWARM_URL=${SWARM_URL:-localhost}
+
+    ports:
+      # Expose service port for PM2 processes
+      - "${SERVICE_PORT:-3001}:3000"
+
+    volumes:
+      - swarm_logs:/logs
+      # Optional: mount a workspace directory for persistent work
+      - swarm_shared:/workspace/shared
+      - swarm_worker_1/personal:/workspace/personal
+
+    restart: unless-stopped
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+
+    environment:
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - API_KEY=${API_KEY}
+      - AGENT_ID=${AGENT_ID_2}
+      - AGENT_ROLE=worker
+
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://api:3013}
+
+      # Same as above...
+
+    ports:
+      # Expose service port for PM2 processes
+      - "${SERVICE_PORT:-3002}:3000"
+
+    volumes:
+      - swarm_logs:/logs
+      - swarm_shared:/workspace/shared
+      - swarm_worker_2/personal:/workspace/personal
+
+    restart: unless-stopped
+
+  lead:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+
+    environment:
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - API_KEY=${API_KEY}
+      - AGENT_ID=${AGENT_ID_LEAD}
+
+      # Important: Lead agent role
+      - AGENT_ROLE=lead
+
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://api:3013}
+
+      # Same as above...
+
+    ports:
+      # Expose service port for PM2 processes
+      - "${SERVICE_PORT:-3003}:3000"
+
+    volumes:
+      - swarm_logs:/logs
+      - swarm_shared:/workspace/shared
+      - swarm_personal_lead:/workspace/personal
+
+    restart: unless-stopped
+
+volumes:
+  swarm_api:
+  swarm_logs:
+  swarm_shared:
+  swarm_lead:
+  swarm_worker_1:
+  swarm_worker_2:
+
+networks:
+  default:
+    driver: bridge

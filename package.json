@@ -1,6 +1,6 @@
 {
   "name": "@desplega.ai/agent-swarm",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "Agent orchestration layer MCP for Claude Code, Codex, Gemini CLI, and more!",
   "module": "src/http.ts",
   "type": "module",
@@ -38,7 +38,8 @@
     "deploy:install": "bun deploy/install.ts",
     "deploy:update": "bun deploy/update.ts",
     "deploy:uninstall": "bun deploy/uninstall.ts",
-    "deploy:docker": "bun deploy/docker-push.ts"
+    "deploy:docker": "bun deploy/docker-push.ts",
+    "docs:mcp": "bun scripts/generate-mcp-docs.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.9",

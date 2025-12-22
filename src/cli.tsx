@@ -241,46 +241,12 @@ function Help() {
       </Box>
 
       <Box marginTop={1} flexDirection="column">
-        <Text bold>Options for 'worker':</Text>
+        <Text bold>Options for 'worker' and 'lead':</Text>
         <Box>
           <Box width={30}>
             <Text color="yellow">-m, --msg {"<prompt>"}</Text>
           </Box>
           <Text>Custom prompt (default: /agent-swarm:start-worker)</Text>
-        </Box>
-        <Box>
-          <Box width={30}>
-            <Text color="yellow">--yolo</Text>
-          </Box>
-          <Text>Continue on errors instead of stopping</Text>
-        </Box>
-        <Box>
-          <Box width={30}>
-            <Text color="yellow">--system-prompt {"<text>"}</Text>
-          </Box>
-          <Text>Custom system prompt (appended to Claude)</Text>
-        </Box>
-        <Box>
-          <Box width={30}>
-            <Text color="yellow">--system-prompt-file {"<path>"}</Text>
-          </Box>
-          <Text>Read system prompt from file</Text>
-        </Box>
-        <Box>
-          <Box width={30}>
-            <Text color="yellow">-- {"<args...>"}</Text>
-          </Box>
-          <Text>Additional arguments to pass to Claude CLI</Text>
-        </Box>
-      </Box>
-
-      <Box marginTop={1} flexDirection="column">
-        <Text bold>Options for 'lead':</Text>
-        <Box>
-          <Box width={30}>
-            <Text color="yellow">-m, --msg {"<prompt>"}</Text>
-          </Box>
-          <Text>Custom prompt (default: /start-leader)</Text>
         </Box>
         <Box>
           <Box width={30}>
@@ -364,45 +330,27 @@ function Help() {
         </Box>
         <Box>
           <Box width={24}>
-            <Text color="magenta">WORKER_YOLO</Text>
+            <Text color="magenta">YOLO</Text>
           </Box>
           <Text>If "true", worker continues on errors</Text>
         </Box>
         <Box>
-          <Box width={24}>
-            <Text color="magenta">LEAD_YOLO</Text>
+          <Box width={32}>
+            <Text color="magenta">LOG_DIR</Text>
           </Box>
-          <Text>If "true", lead continues on errors</Text>
+          <Text>Directory for agent logs, defaults to ./logs</Text>
         </Box>
         <Box>
           <Box width={32}>
-            <Text color="magenta">LEAD_LOG_DIR</Text>
-          </Box>
-          <Text>Directory for lead agent logs</Text>
-        </Box>
-        <Box>
-          <Box width={32}>
-            <Text color="magenta">WORKER_SYSTEM_PROMPT</Text>
+            <Text color="magenta">SYSTEM_PROMPT</Text>
           </Box>
           <Text>Custom system prompt for worker</Text>
         </Box>
         <Box>
           <Box width={32}>
-            <Text color="magenta">WORKER_SYSTEM_PROMPT_FILE</Text>
+            <Text color="magenta">SYSTEM_PROMPT_FILE</Text>
           </Box>
-          <Text>Path to system prompt file for worker</Text>
-        </Box>
-        <Box>
-          <Box width={32}>
-            <Text color="magenta">LEAD_SYSTEM_PROMPT</Text>
-          </Box>
-          <Text>Custom system prompt for lead</Text>
-        </Box>
-        <Box>
-          <Box width={32}>
-            <Text color="magenta">LEAD_SYSTEM_PROMPT_FILE</Text>
-          </Box>
-          <Text>Path to system prompt file for lead</Text>
+          <Text>Path to system prompt file</Text>
         </Box>
       </Box>
     </Box>
@@ -481,7 +429,7 @@ function ClaudeRunner({ msg, headless, additionalArgs }: ClaudeRunnerProps) {
   return null;
 }
 
-interface WorkerRunnerProps {
+interface RunnerProps {
   prompt: string;
   yolo: boolean;
   systemPrompt: string;
@@ -495,7 +443,7 @@ function WorkerRunner({
   systemPrompt,
   systemPromptFile,
   additionalArgs,
-}: WorkerRunnerProps) {
+}: RunnerProps) {
   const { exit } = useApp();
 
   useEffect(() => {
@@ -512,21 +460,7 @@ function WorkerRunner({
   return null;
 }
 
-interface LeadRunnerProps {
-  prompt: string;
-  yolo: boolean;
-  systemPrompt: string;
-  systemPromptFile: string;
-  additionalArgs: string[];
-}
-
-function LeadRunner({
-  prompt,
-  yolo,
-  systemPrompt,
-  systemPromptFile,
-  additionalArgs,
-}: LeadRunnerProps) {
+function LeadRunner({ prompt, yolo, systemPrompt, systemPromptFile, additionalArgs }: RunnerProps) {
   const { exit } = useApp();
 
   useEffect(() => {

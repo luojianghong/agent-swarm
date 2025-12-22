@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { getBasePrompt } from "../prompts/base-prompt.ts";
+import { prettyPrintLine, prettyPrintStderr } from "../utils/pretty-print.ts";
 
 /** Save PM2 process list for persistence across container restarts */
 async function savePm2State(role: string): Promise<void> {
@@ -30,18 +31,8 @@ export interface RunnerConfig {
   role: string;
   /** Default prompt if none provided */
   defaultPrompt: string;
-  /** Environment variable name for YOLO mode, e.g., "WORKER_YOLO" */
-  yoloEnvVar: string;
-  /** Environment variable name for log directory, e.g., "WORKER_LOG_DIR" */
-  logDirEnvVar: string;
   /** Metadata type for log files, e.g., "worker_metadata" */
   metadataType: string;
-  /** Environment variable name for system prompt text, e.g., "WORKER_SYSTEM_PROMPT" */
-  systemPromptEnvVar: string;
-  /** Environment variable name for system prompt file path, e.g., "WORKER_SYSTEM_PROMPT_FILE" */
-  systemPromptFileEnvVar: string;
-  /** Environment variable name for swarm URL, e.g., "SWARM_URL" */
-  swarmUrlEnvVar: string;
 }
 
 export interface RunnerOptions {
@@ -83,7 +74,7 @@ async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<numb
     CMD.push("--append-system-prompt", opts.systemPrompt);
   }
 
-  console.log(`[${role}] Running: claude ... -p "${opts.prompt}"`);
+  console.log(`\x1b[2m[${role}]\x1b[0m \x1b[36m▸\x1b[0m Starting Claude (PID will follow)`);
 
   const logFileHandle = Bun.file(opts.logFile).writer();
   let stderrOutput = "";
@@ -94,136 +85,79 @@ async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<numb
     stderr: "pipe",
   });
 
-  console.log(`[${role}] Process spawned, PID: ${proc.pid}`);
-  console.log(`[${role}] Waiting for output streams...`);
-
   let stdoutChunks = 0;
   let stderrChunks = 0;
 
   const stdoutPromise = (async () => {
-    console.log(`[${role}] stdout stream: ${proc.stdout ? "available" : "not available"}`);
     if (proc.stdout) {
       for await (const chunk of proc.stdout) {
         stdoutChunks++;
         const text = new TextDecoder().decode(chunk);
         logFileHandle.write(text);
-        console.log(`[${role}] stdout chunk #${stdoutChunks} (${chunk.length} bytes)`);
 
         const lines = text.split("\n");
         for (const line of lines) {
-          if (line.trim() === "") continue;
-          try {
-            const json = JSON.parse(line.trim());
-            if (json.type === "assistant" && json.message) {
-              const preview = json.message.slice(0, 100);
-              console.log(
-                `[${role}] Assistant: ${preview}${json.message.length > 100 ? "..." : ""}`,
-              );
-            } else if (json.type === "tool_use") {
-              console.log(`[${role}] Tool: ${json.tool || json.name || "unknown"}`);
-            } else if (json.type === "result") {
-              const resultPreview = JSON.stringify(json).slice(0, 200);
-              console.log(
-                `[${role}] Result: ${resultPreview}${JSON.stringify(json).length > 200 ? "..." : ""}`,
-              );
-            } else if (json.type === "error") {
-              console.error(
-                `[${role}] Error from Claude: ${json.error || json.message || JSON.stringify(json)}`,
-              );
-            } else if (json.type === "system") {
-              const msg = json.message || json.content || "";
-              const preview =
-                typeof msg === "string" ? msg.slice(0, 150) : JSON.stringify(msg).slice(0, 150);
-              console.log(`[${role}] System: ${preview}${preview.length >= 150 ? "..." : ""}`);
-            } else {
-              console.log(
-                `[${role}] Event type: ${json.type} - ${JSON.stringify(json).slice(0, 100)}`,
-              );
-            }
-          } catch {
-            if (line.trim()) {
-              console.log(`[${role}] Raw output: ${line.trim()}`);
-            }
-          }
+          prettyPrintLine(line, role);
         }
       }
-      console.log(`[${role}] stdout stream ended (total ${stdoutChunks} chunks)`);
     }
   })();
 
   const stderrPromise = (async () => {
-    console.log(`[${role}] stderr stream: ${proc.stderr ? "available" : "not available"}`);
     if (proc.stderr) {
       for await (const chunk of proc.stderr) {
         stderrChunks++;
         const text = new TextDecoder().decode(chunk);
         stderrOutput += text;
-        console.error(`[${role}] stderr chunk #${stderrChunks}: ${text.trim()}`);
+        prettyPrintStderr(text, role);
         logFileHandle.write(
           `${JSON.stringify({ type: "stderr", content: text, timestamp: new Date().toISOString() })}\n`,
         );
       }
-      console.log(`[${role}] stderr stream ended (total ${stderrChunks} chunks)`);
     }
   })();
 
-  console.log(`[${role}] Waiting for streams to complete...`);
   await Promise.all([stdoutPromise, stderrPromise]);
-
   await logFileHandle.end();
-  console.log(`[${role}] Waiting for process to exit...`);
   const exitCode = await proc.exited;
 
-  console.log(`[${role}] Claude exited with code ${exitCode}`);
-  console.log(`[${role}] Total stdout chunks: ${stdoutChunks}, stderr chunks: ${stderrChunks}`);
-
   if (exitCode !== 0 && stderrOutput) {
-    console.error(`[${role}] Full stderr output:\n${stderrOutput}`);
+    console.error(`\x1b[31m[${role}] Full stderr:\x1b[0m\n${stderrOutput}`);
   }
 
   if (stdoutChunks === 0 && stderrChunks === 0) {
-    console.warn(`[${role}] WARNING: No output received from Claude at all!`);
-    console.warn(`[${role}] This might indicate Claude failed to start or auth issues.`);
+    console.warn(`\x1b[33m[${role}] WARNING: No output from Claude - check auth/startup\x1b[0m`);
   }
 
   return exitCode ?? 1;
 }
 
 export async function runAgent(config: RunnerConfig, opts: RunnerOptions) {
-  const {
-    role,
-    defaultPrompt,
-    yoloEnvVar,
-    logDirEnvVar,
-    metadataType,
-    systemPromptEnvVar,
-    systemPromptFileEnvVar,
-    swarmUrlEnvVar,
-  } = config;
+  const { role, defaultPrompt, metadataType } = config;
 
   // Setup graceful shutdown handlers (saves PM2 state on Ctrl+C)
   setupShutdownHandlers(role);
 
   const sessionId = process.env.SESSION_ID || crypto.randomUUID().slice(0, 8);
-  const baseLogDir = process.env[logDirEnvVar] || "./logs";
+  const baseLogDir = process.env.LOG_DIR || "/logs";
   const logDir = `${baseLogDir}/${sessionId}`;
 
   await mkdir(logDir, { recursive: true });
 
   const prompt = opts.prompt || defaultPrompt;
-  const isYolo = opts.yolo || process.env[yoloEnvVar] === "true";
+  const isYolo = opts.yolo || process.env.YOLO === "true";
 
   // Get agent identity and swarm URL for base prompt
   const agentId = process.env.AGENT_ID || "unknown";
-  const swarmUrl = process.env[swarmUrlEnvVar] || "localhost";
+  const swarmUrl = process.env.SWARM_URL || "localhost";
 
   // Generate base prompt that's always included
   const basePrompt = getBasePrompt({ role, agentId, swarmUrl });
 
   // Resolve additional system prompt: CLI flag > env var
   let additionalSystemPrompt: string | undefined;
-  const systemPromptText = opts.systemPrompt || process.env[systemPromptEnvVar];
-  const systemPromptFilePath = opts.systemPromptFile || process.env[systemPromptFileEnvVar];
+  const systemPromptText = opts.systemPrompt || process.env.SYSTEM_PROMPT;
+  const systemPromptFilePath = opts.systemPromptFile || process.env.SYSTEM_PROMPT_FILE;
 
   if (systemPromptText) {
     additionalSystemPrompt = systemPromptText;

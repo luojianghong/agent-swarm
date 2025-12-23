@@ -1,7 +1,26 @@
 {
   "name": "@desplega.ai/agent-swarm",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "Agent orchestration layer MCP for Claude Code, Codex, Gemini CLI, and more!",
+  "license": "MIT",
+  "author": "desplega.ai <contact@desplega.ai>",
+  "maintainers": [
+    {
+      "name": "Taras",
+      "email": "t@desplega.ai"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/desplega-ai/agent-swarm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/desplega-ai/agent-swarm/issues"
+  },
+  "homepage": "https://github.com/desplega-ai/agent-swarm#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "module": "src/http.ts",
   "type": "module",
   "bin": {

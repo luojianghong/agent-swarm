@@ -13,10 +13,60 @@ async function savePm2State(role: string): Promise<void> {
   }
 }
 
+/** API configuration for ping/close */
+interface ApiConfig {
+  apiUrl: string;
+  apiKey: string;
+  agentId: string;
+}
+
+/** Ping the server to indicate activity and update status */
+async function pingServer(config: ApiConfig, _role: string): Promise<void> {
+  const headers: Record<string, string> = {
+    "X-Agent-ID": config.agentId,
+  };
+  if (config.apiKey) {
+    headers.Authorization = `Bearer ${config.apiKey}`;
+  }
+
+  try {
+    await fetch(`${config.apiUrl}/ping`, {
+      method: "POST",
+      headers,
+    });
+  } catch {
+    // Silently fail - server might not be running
+  }
+}
+
+/** Mark agent as offline on shutdown */
+async function closeAgent(config: ApiConfig, role: string): Promise<void> {
+  const headers: Record<string, string> = {
+    "X-Agent-ID": config.agentId,
+  };
+  if (config.apiKey) {
+    headers.Authorization = `Bearer ${config.apiKey}`;
+  }
+
+  try {
+    console.log(`[${role}] Marking agent as offline...`);
+    await fetch(`${config.apiUrl}/close`, {
+      method: "POST",
+      headers,
+    });
+    console.log(`[${role}] Agent marked as offline`);
+  } catch {
+    // Silently fail - server might not be running
+  }
+}
+
 /** Setup signal handlers for graceful shutdown */
-function setupShutdownHandlers(role: string): void {
+function setupShutdownHandlers(role: string, apiConfig?: ApiConfig): void {
   const shutdown = async (signal: string) => {
     console.log(`\n[${role}] Received ${signal}, shutting down...`);
+    if (apiConfig) {
+      await closeAgent(apiConfig, role);
+    }
     await savePm2State(role);
     process.exit(0);
   };
@@ -122,11 +172,22 @@ async function flushLogBuffer(
 
 /** Trigger types returned by the poll API */
 interface Trigger {
-  type: "task_assigned" | "task_offered" | "unread_mentions" | "pool_tasks_available";
+  type:
+    | "task_assigned"
+    | "task_offered"
+    | "unread_mentions"
+    | "pool_tasks_available"
+    | "tasks_finished";
   taskId?: string;
   task?: unknown;
   mentionsCount?: number;
   count?: number;
+  tasks?: Array<{
+    id: string;
+    agentId?: string;
+    task: string;
+    status: string;
+  }>;
 }
 
 /** Options for polling */
@@ -136,6 +197,7 @@ interface PollOptions {
   agentId: string;
   pollInterval: number;
   pollTimeout: number;
+  since?: string; // Optional: for filtering finished tasks
 }
 
 /** Register agent via HTTP API */
@@ -183,7 +245,13 @@ async function pollForTrigger(opts: PollOptions): Promise<Trigger | null> {
 
   while (Date.now() - startTime < opts.pollTimeout) {
     try {
-      const response = await fetch(`${opts.apiUrl}/api/poll`, {
+      // Build URL with optional since parameter
+      let url = `${opts.apiUrl}/api/poll`;
+      if (opts.since) {
+        url += `?since=${encodeURIComponent(opts.since)}`;
+      }
+
+      const response = await fetch(url, {
         method: "GET",
         headers,
       });
@@ -224,8 +292,23 @@ function buildPromptForTrigger(trigger: Trigger, defaultPrompt: string): string 
       return "/swarm-chat";
 
     case "pool_tasks_available":
-      // Let lead review and assign tasks
-      return defaultPrompt;
+      // Worker: claim a task from the pool
+      // Include the count so worker knows there are tasks available
+      return `There are ${trigger.count} unassigned task(s) available in the pool. Use get-tasks with unassigned: true to see them, then use task-action with action: "claim" to claim one. The claim is first-come-first-serve, so if your claim fails, try another task.`;
+
+    case "tasks_finished":
+      // Lead: simple notification about finished tasks
+      if (trigger.tasks && Array.isArray(trigger.tasks) && trigger.tasks.length > 0) {
+        const taskSummaries = trigger.tasks
+          .map((t) => {
+            const status = t.status === "completed" ? "completed" : "failed";
+            const agentName = t.agentId ? `Agent ${t.agentId.slice(0, 8)}` : "Unknown agent";
+            return `- ${agentName} ${status} task "${t.task?.slice(0, 50)}..." (ID: ${t.id})`;
+          })
+          .join("\n");
+        return `Workers have finished ${trigger.count} task(s):\n${taskSummaries}\n\nReview these results and decide if any follow-up actions are needed.`;
+      }
+      return `Workers have finished ${trigger.count} task(s). Use get-tasks with status "completed" or "failed" to review them.`;
 
     default:
       return defaultPrompt;
@@ -234,7 +317,7 @@ function buildPromptForTrigger(trigger: Trigger, defaultPrompt: string): string 
 
 async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<number> {
   const { role } = opts;
-  const CMD = [
+  const Cmd = [
     "claude",
     "--verbose",
     "--output-format",
@@ -248,11 +331,11 @@ async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<numb
   ];
 
   if (opts.additionalArgs && opts.additionalArgs.length > 0) {
-    CMD.push(...opts.additionalArgs);
+    Cmd.push(...opts.additionalArgs);
   }
 
   if (opts.systemPrompt) {
-    CMD.push("--append-system-prompt", opts.systemPrompt);
+    Cmd.push("--append-system-prompt", opts.systemPrompt);
   }
 
   console.log(`\x1b[2m[${role}]\x1b[0m \x1b[36m▸\x1b[0m Starting Claude (PID will follow)`);
@@ -260,7 +343,7 @@ async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<numb
   const logFileHandle = Bun.file(opts.logFile).writer();
   let stderrOutput = "";
 
-  const proc = Bun.spawn(CMD, {
+  const proc = Bun.spawn(Cmd, {
     env: process.env,
     stdout: "pipe",
     stderr: "pipe",
@@ -355,9 +438,6 @@ async function runClaudeIteration(opts: RunClaudeIterationOptions): Promise<numb
 export async function runAgent(config: RunnerConfig, opts: RunnerOptions) {
   const { role, defaultPrompt, metadataType } = config;
 
-  // Setup graceful shutdown handlers (saves PM2 state on Ctrl+C)
-  setupShutdownHandlers(role);
-
   const sessionId = process.env.SESSION_ID || crypto.randomUUID().slice(0, 8);
   const baseLogDir = opts.logsDir || process.env.LOG_DIR || "/logs";
   const logDir = `${baseLogDir}/${sessionId}`;
@@ -430,14 +510,20 @@ export async function runAgent(config: RunnerConfig, opts: RunnerOptions) {
   const apiKey = process.env.API_KEY || "";
 
   // Constants for polling
-  const POLL_INTERVAL_MS = 2000; // 2 seconds between polls
-  const POLL_TIMEOUT_MS = 60000; // 1 minute timeout before retrying
+  const PollIntervalMs = 2000; // 2 seconds between polls
+  const PollTimeoutMs = 60000; // 1 minute timeout before retrying
 
   let iteration = 0;
 
   if (!isAiLoop) {
     // NEW: Runner-level polling mode
     console.log(`[${role}] Mode: runner-level polling (use --ai-loop for AI-based polling)`);
+
+    // Create API config for ping/close
+    const apiConfig: ApiConfig = { apiUrl, apiKey, agentId };
+
+    // Setup graceful shutdown handlers with API config for close on exit
+    setupShutdownHandlers(role, apiConfig);
 
     // Register agent before starting
     const agentName = process.env.AGENT_NAME || `${role}-${agentId.slice(0, 8)}`;
@@ -456,20 +542,32 @@ export async function runAgent(config: RunnerConfig, opts: RunnerOptions) {
       process.exit(1);
     }
 
+    // Track last finished task check for leads (to avoid re-processing)
+    let lastFinishedTaskCheck: string | undefined;
+
     while (true) {
+      // Ping server on each iteration to keep status updated
+      await pingServer(apiConfig, role);
+
       console.log(`\n[${role}] Polling for triggers...`);
 
       const trigger = await pollForTrigger({
         apiUrl,
         apiKey,
         agentId,
-        pollInterval: POLL_INTERVAL_MS,
-        pollTimeout: POLL_TIMEOUT_MS,
+        pollInterval: PollIntervalMs,
+        pollTimeout: PollTimeoutMs,
+        since: lastFinishedTaskCheck,
       });
 
       if (!trigger) {
         console.log(`[${role}] No trigger found, polling again...`);
         continue;
+      }
+
+      // After getting a tasks_finished trigger, update the timestamp
+      if (trigger.type === "tasks_finished") {
+        lastFinishedTaskCheck = new Date().toISOString();
       }
 
       console.log(`[${role}] Trigger received: ${trigger.type}`);
@@ -540,7 +638,16 @@ export async function runAgent(config: RunnerConfig, opts: RunnerOptions) {
     // Original AI-loop mode (existing behavior)
     console.log(`[${role}] Mode: AI-based polling (legacy)`);
 
+    // Create API config for ping/close
+    const apiConfig: ApiConfig = { apiUrl, apiKey, agentId };
+
+    // Setup graceful shutdown handlers with API config for close on exit
+    setupShutdownHandlers(role, apiConfig);
+
     while (true) {
+      // Ping server on each iteration to keep status updated
+      await pingServer(apiConfig, role);
+
       iteration++;
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const logFile = `${logDir}/${timestamp}.jsonl`;

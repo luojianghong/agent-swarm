@@ -728,6 +728,34 @@ export function getCompletedSlackTasks(): AgentTask[] {
     .map(rowToAgentTask);
 }
 
+/**
+ * Get tasks that were recently finished (completed/failed) by workers (non-lead agents).
+ * Used by leads to know when workers complete tasks.
+ */
+export function getRecentlyFinishedWorkerTasks(since?: string): AgentTask[] {
+  const query = since
+    ? `SELECT t.* FROM agent_tasks t
+       LEFT JOIN agents a ON t.agentId = a.id
+       WHERE t.status IN ('completed', 'failed')
+       AND t.finishedAt > ?
+       AND (a.isLead = 0 OR a.isLead IS NULL)
+       ORDER BY t.finishedAt DESC
+       LIMIT 50`
+    : `SELECT t.* FROM agent_tasks t
+       LEFT JOIN agents a ON t.agentId = a.id
+       WHERE t.status IN ('completed', 'failed')
+       AND t.finishedAt IS NOT NULL
+       AND (a.isLead = 0 OR a.isLead IS NULL)
+       ORDER BY t.finishedAt DESC
+       LIMIT 10`;
+
+  if (since) {
+    return getDb().prepare<AgentTaskRow, [string]>(query).all(since).map(rowToAgentTask);
+  }
+
+  return getDb().prepare<AgentTaskRow, []>(query).all().map(rowToAgentTask);
+}
+
 export function getInProgressSlackTasks(): AgentTask[] {
   return getDb()
     .prepare<AgentTaskRow, []>(

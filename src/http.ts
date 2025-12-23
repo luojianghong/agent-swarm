@@ -28,6 +28,7 @@ import {
   getLogsByTaskId,
   getOfferedTasksForAgent,
   getPendingTaskForAgent,
+  getRecentlyFinishedWorkerTasks,
   getServicesByAgentId,
   getSessionLogsByTaskId,
   getTaskById,
@@ -284,6 +285,10 @@ const httpServer = createHttpServer(async (req, res) => {
       return;
     }
 
+    // Get optional 'since' parameter for finished tasks
+    const queryParams = parseQueryParams(req.url || "");
+    const since = queryParams.get("since") || undefined;
+
     // Use transaction for consistent reads across all trigger checks
     const result = getDb().transaction(() => {
       const agent = getAgentById(myAgentId);
@@ -291,7 +296,7 @@ const httpServer = createHttpServer(async (req, res) => {
         return { error: "Agent not found", status: 404 };
       }
 
-      // Check for offered tasks first (highest priority)
+      // Check for offered tasks first (highest priority for both workers and leads)
       const offeredTasks = getOfferedTasksForAgent(myAgentId);
       const firstOfferedTask = offeredTasks[0];
       if (firstOfferedTask) {
@@ -316,8 +321,10 @@ const httpServer = createHttpServer(async (req, res) => {
         };
       }
 
-      // For lead agents, check for unread mentions
       if (agent.isLead) {
+        // === LEAD-SPECIFIC TRIGGERS ===
+
+        // Check for unread mentions
         const inbox = getInboxSummary(myAgentId);
         if (inbox.mentionsCount > 0) {
           return {
@@ -328,7 +335,21 @@ const httpServer = createHttpServer(async (req, res) => {
           };
         }
 
-        // Check for tasks needing assignment (unassigned tasks in pool)
+        // Check for recently finished worker tasks
+        const finishedTasks = getRecentlyFinishedWorkerTasks(since);
+        if (finishedTasks.length > 0) {
+          return {
+            trigger: {
+              type: "tasks_finished",
+              count: finishedTasks.length,
+              tasks: finishedTasks,
+            },
+          };
+        }
+      } else {
+        // === WORKER-SPECIFIC TRIGGERS ===
+
+        // Check for unassigned tasks in pool (workers can claim)
         const unassignedCount = getUnassignedTasksCount();
         if (unassignedCount > 0) {
           return {

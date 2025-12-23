@@ -7,23 +7,23 @@ type RunCladeOptions = {
 };
 
 export const runClaude = async (opts: RunCladeOptions) => {
-  const CMD = ["claude"];
+  const Cmd = ["claude"];
 
   if (opts.headless) {
-    CMD.push("--verbose");
-    CMD.push("--output-format");
-    CMD.push("stream-json");
-    CMD.push("-p");
-    CMD.push(opts.msg);
+    Cmd.push("--verbose");
+    Cmd.push("--output-format");
+    Cmd.push("stream-json");
+    Cmd.push("-p");
+    Cmd.push(opts.msg);
   }
 
   if (opts.additionalArgs && opts.additionalArgs.length > 0) {
-    CMD.push(...opts.additionalArgs);
+    Cmd.push(...opts.additionalArgs);
   }
 
   console.debug(`[debug] Running in ${opts.headless ? "headless" : "normal"} mode`);
 
-  const proc = Bun.spawn(CMD, {
+  const proc = Bun.spawn(Cmd, {
     env: process.env,
     stdout: opts.headless ? "pipe" : "inherit",
     stdin: opts.headless ? undefined : "inherit",
